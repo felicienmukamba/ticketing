@@ -1,115 +1,124 @@
 # ticketing/views.py
-from django.shortcuts import render, redirect
-from django.views import View
-
-from ticketing.forms import ProgrammeForm, SpectateurCreationForm
+from django.shortcuts import get_object_or_404, render, redirect
+from django.urls import reverse_lazy
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.views.generic import TemplateView, ListView, CreateView, UpdateView, DeleteView
 from .models import Programme, Reservation, Paiement, Spectateur
-from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.decorators import login_required, permission_required
+from .forms import SpectateurCreationForm, ProgrammeForm, ReservationManagerForm
 
+# ... vues inscription, paiement, etc. déjà créées ...
 
+def index(request):
+    """ Redirige vers le dashboard si l'utilisateur est connecté, sinon vers la page de connexion. """
+    if request.user.is_authenticated:
+        return redirect('dashboard_home')
+    return redirect('login')
 
-# ticketing/views.py (à ajouter)
-import stripe
-from django.conf import settings
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from .models import Reservation, Paiement
+# ========================
+# VUES GÉNÉRIQUES DU DASHBOARD
+# ========================
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+class DashboardHomeView(LoginRequiredMixin, TemplateView):
+    template_name = 'dashboard/dashboard_base.html'
 
-def page_paiement(request, reservation_id):
-    reservation = get_object_or_404(Reservation, id=reservation_id)
-    # Calculer le montant (exemple simple)
-    montant_total = reservation.nombre_billets * reservation.programme.prix_a
+# ========================
+# VUES DU SPECTATEUR
+# ========================
 
-    return render(request, 'ticketing/paiement.html', {
-        'reservation': reservation,
-        'montant_total': montant_total,
-        'montant_total_cents': int(montant_total * 100),
-        'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
-    })
+class ProgrammeListView(LoginRequiredMixin, ListView):
+    model = Programme
+    template_name = 'dashboard/spectateur/programme_list.html'
+    context_object_name = 'programmes'
+    queryset = Programme.objects.order_by('date')
 
-def create_payment_intent(request, reservation_id):
-    reservation = get_object_or_404(Reservation, id=reservation_id)
-    montant_total = reservation.nombre_billets * reservation.programme.prix_a
+class ReservationHistoryView(LoginRequiredMixin, ListView):
+    model = Reservation
+    template_name = 'dashboard/spectateur/reservation_history.html'
+    context_object_name = 'reservations'
 
-    try:
-        intent = stripe.PaymentIntent.create(
-            amount=int(montant_total * 100), # Montant en centimes
-            currency='eur',
-            metadata={'reservation_id': reservation.id}
-        )
-        return JsonResponse({'clientSecret': intent.client_secret})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=403)
+    def get_queryset(self):
+        # Ne retourne que les réservations de l'utilisateur connecté
+        return Reservation.objects.filter(spectateur=self.request.user.spectateur).order_by('-date_reservation')
 
-def payment_success(request, reservation_id):
-    reservation = get_object_or_404(Reservation, id=reservation_id)
-    # Créer l'objet Paiement pour garder une trace
-    Paiement.objects.create(
-        reservation=reservation,
-        montant=reservation.nombre_billets * reservation.programme.prix_a,
-        mode_paiement='Google Pay via Stripe',
-        # Idéalement, stocker ici l'ID de la transaction Stripe
-    )
-    return render(request, 'ticketing/payment_success.html')
+# ========================
+# VUES DU GESTIONNAIRE
+# ========================
 
-# Vue pour afficher tous les programmes
-def liste_programmes(request):
-    programmes = Programme.objects.all().order_by('date')
-    return render(request, 'ticketing/liste_programmes.html', {'programmes': programmes})
+class ProgrammeManagerListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    model = Programme
+    template_name = 'dashboard/manager/programme_list.html'
+    context_object_name = 'programmes'
+    permission_required = 'ticketing.view_programme'
 
-@login_required
-@permission_required('ticketing.add_programme', raise_exception=True)
-def creer_programme(request):
-    if request.method == 'POST':
-        form = ProgrammeForm(request.POST)
-        if form.is_valid():
-            programme = form.save(commit=False)
-            # Associer l'agent connecté comme créateur
-            programme.agent_createur = request.user.agent
-            programme.save()
-            return redirect('liste_programmes')
-    else:
-        form = ProgrammeForm()
-    return render(request, 'ticketing/creer_programme.html', {'form': form})
+class ProgrammeCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    model = Programme
+    form_class = ProgrammeForm
+    template_name = 'dashboard/manager/programme_form.html'
+    success_url = reverse_lazy('dashboard_manager_programmes')
+    permission_required = 'ticketing.add_programme'
 
-# Vue pour le processus de réservation (Exemple simple)
-class ReservationView(LoginRequiredMixin, View):
-    def get(self, request, programme_id):
-        programme = Programme.objects.get(id=programme_id)
-        return render(request, 'ticketing/reservation.html', {'programme': programme})
-
-    def post(self, request, programme_id):
-        # Logique pour créer la réservation et préparer le paiement
-        programme = Programme.objects.get(id=programme_id)
-        spectateur = request.user.spectateur
-        nb_billets = int(request.POST.get('nombre_billets'))
-        
-        # Créer une réservation en attente de paiement
-        reservation = Reservation.objects.create(
-            spectateur=spectateur,
-            programme=programme,
-            nombre_billets=nb_billets
-        )
-        
-        # Rediriger vers la page de paiement avec l'ID de la réservation
-        return redirect('page_paiement', reservation_id=reservation.id)
+    def form_valid(self, form):
+        form.instance.agent_createur = self.request.user.agent
+        return super().form_valid(form)
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['action'] = "Créer"
+        return context
+
+class ProgrammeUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    model = Programme
+    form_class = ProgrammeForm
+    template_name = 'dashboard/manager/programme_form.html'
+    success_url = reverse_lazy('dashboard_manager_programmes')
+    permission_required = 'ticketing.change_programme'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['action'] = "Modifier"
+        return context
+
+class ProgrammeDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    model = Programme
+    template_name = 'dashboard/manager/programme_confirm_delete.html'
+    success_url = reverse_lazy('dashboard_manager_programmes')
+    permission_required = 'ticketing.delete_programme'
 
 
-# ticketing/views.py
+class ReservationCreateView(LoginRequiredMixin, CreateView):
+    model = Reservation
+    fields = ['nombre_billets']
+    template_name = 'dashboard/spectateur/reservation_form.html'
 
-@login_required
-def historique_reservations(request):
-    # S'assurer que l'utilisateur est un spectateur
-    try:
-        spectateur = request.user.spectateur
-        reservations = Reservation.objects.filter(spectateur=spectateur).order_by('-date_reservation')
-        return render(request, 'ticketing/historique_reservations.html', {'reservations': reservations})
-    except Spectateur.DoesNotExist:
-        # Gérer le cas où un gestionnaire ou admin connecté irait sur cette page
-        return render(request, 'ticketing/historique_reservations.html', {'reservations': []})
+    def form_valid(self, form):
+        # Associer le programme et le spectateur à la réservation
+        form.instance.programme = get_object_or_404(Programme, pk=self.kwargs['programme_id'])
+        form.instance.spectateur = self.request.user.spectateur
+        # Sauvegarder la réservation
+        self.object = form.save()
+        # Rediriger vers la page de paiement avec l'ID de la nouvelle réservation
+        return redirect('page_paiement', reservation_id=self.object.id)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['programme'] = get_object_or_404(Programme, pk=self.kwargs['programme_id'])
+        return context
+    
+class ReservationManagerListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    model = Reservation
+    template_name = 'dashboard/manager/reservation_list.html'
+    context_object_name = 'reservations'
+    permission_required = 'ticketing.view_reservation'
+
+class ReservationUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    model = Reservation
+    form_class = ReservationManagerForm
+    template_name = 'dashboard/manager/reservation_form.html'
+    success_url = reverse_lazy('dashboard_manager_reservations')
+    permission_required = 'ticketing.change_reservation'
+
+class TicketHistoryView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
+    model = Paiement
+    template_name = 'dashboard/manager/ticket_history.html'
+    context_object_name = 'paiements'
+    permission_required = 'ticketing.view_paiement'

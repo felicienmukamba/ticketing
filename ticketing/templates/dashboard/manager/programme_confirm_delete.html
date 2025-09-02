@@ -1,0 +1,12 @@
+{% extends "dashboard/dashboard_base.html" %}
+
+{% block content %}
+<h1>Supprimer le Programme</h1>
+<hr>
+<p>Êtes-vous sûr de vouloir supprimer le match : <strong>{{ object }}</strong> ?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Oui, supprimer</button>
+    <a href="{% url 'dashboard_manager_programmes' %}" class="btn btn-secondary">Non, annuler</a>
+</form>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "dashboard/dashboard_base.html" %}
+
+{% block content %}
+<h1>Programmes à Venir</h1>
+<div class="row">
+    {% for p in programmes %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{ p.nom_equipe1 }} vs {{ p.nom_equipe2 }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{ p.stadium }}</h6>
+                <p class="card-text">
+                    <i class="bi bi-calendar-event"></i> {{ p.date|date:"d F Y" }}<br>
+                    <i class="bi bi-clock"></i> {{ p.date|date:"H:i" }}
+                </p>
+                <a href="{% url 'reservation_create' p.pk %}" class="btn btn-primary">Réserver des places</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "dashboard/dashboard_base.html" %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="display-4 text-success">Paiement Réussi ! ✅</h1>
+    <p class="lead">Votre réservation a été confirmée avec succès.</p>
+    <hr>
+    <p>Vous pouvez consulter les détails de votre réservation dans votre historique.</p>
+    <a href="{% url 'dashboard_reservation_history' %}" class="btn btn-primary btn-lg mt-3">Voir mon historique</a>
+    <a href="{% url 'dashboard_programme_list' %}" class="btn btn-secondary btn-lg mt-3">Retour aux programmes</a>
+</div>
+{% endblock %}

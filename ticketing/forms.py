@@ -5,6 +5,16 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import Programme, Spectateur
 
+# ticketing/forms.py (ajoutez cette classe)
+from .models import Reservation
+
+class ReservationManagerForm(forms.ModelForm):
+    class Meta:
+        model = Reservation
+        fields = ['nombre_billets'] # Par exemple, on permet de changer le nombre de billets
+        # On pourrait ajouter un champ 'statut' si on en avait un dans le modèle
+
+        
 # Formulaire d'inscription personnalisé pour inclure les champs du Spectateur
 class SpectateurCreationForm(UserCreationForm):
     ville = forms.CharField(max_length=100, required=True)
