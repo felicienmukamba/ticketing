@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Finaliser votre paiement</h2>
+  <p>Réservation pour : {{ reservation.programme }}</p>
+  <p>Nombre de billets : {{ reservation.nombre_billets }}</p>
+  <p>Montant total : <strong>{{ montant_total }} €</strong></p>
+
+  <div id="payment-request-button"></div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="https://js.stripe.com/v3/"></script>
+  <script>
+    const stripe = Stripe('{{ stripe_publishable_key }}');
+    const reservationId = {{ reservation.id }};
+    const montantTotal = {{ montant_total_cents }}; // Stripe travaille en centimes
+
+    // 1. Créer une intention de paiement sur votre serveur
+    fetch(`/create-payment-intent/${reservationId}/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        const clientSecret = data.clientSecret;
+
+        // 2. Initialiser le bouton de paiement (Google Pay)
+        const paymentRequest = stripe.paymentRequest({
+            country: 'FR',
+            currency: 'eur',
+            total: {
+                label: 'Total Billetterie',
+                amount: montantTotal,
+            },
+            requestPayerName: true,
+            requestPayerEmail: true,
+        });
+
+        // 3. Afficher le bouton si le navigateur est compatible
+        const elements = stripe.elements();
+        const prButton = elements.create('paymentRequestButton', {
+            paymentRequest: paymentRequest,
+        });
+
+        paymentRequest.canMakePayment().then(function (result) {
+            if (result) {
+                prButton.mount('#payment-request-button');
+            } else {
+                document.getElementById('payment-request-button').style.display = 'none';
+                alert("Google Pay n'est pas supporté sur cet appareil.");
+            }
+        });
+
+        // 4. Gérer la confirmation du paiement
+        paymentRequest.on('paymentmethod', function(ev) {
+            stripe.confirmCardPayment(
+                clientSecret,
+                {payment_method: ev.paymentMethod.id},
+                {handleActions: false}
+            ).then(function(confirmResult) {
+                if (confirmResult.error) {
+                    ev.complete('fail');
+                    alert("Le paiement a échoué.");
+                } else {
+                    ev.complete('success');
+                    // Rediriger vers une page de succès
+                    window.location.href = `/payment-success/${reservationId}/`;
+                }
+            });
+        });
+    });
+  </script>
+{% endblock %}

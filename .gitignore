@@ -1,0 +1,32 @@
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# Database files
+db.sqlite3
+
+# Media files
+media/
+
+# Collected static files
+static_cdn/
+staticfiles/
+
+# Environment variables and secrets
+.env
+.env.local
+local_settings.py
+
+# IDE/Editor-specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Log files
+*.log
