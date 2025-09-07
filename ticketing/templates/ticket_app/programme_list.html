@@ -1,0 +1,62 @@
+{% extends "ticket_app/base.html" %}
+
+{% block title %}Gestion des Programmes{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Gestion des Programmes</h1>
+    <a href="{% url 'programme_create' %}" class="btn btn-primary">Ajouter un programme</a>
+</div>
+
+{% if programmes %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Programme</th>
+                <th>Date</th>
+                <th>Stade</th>
+                <th>Prix A</th>
+                <th>Prix B</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for programme in programmes %}
+            <tr>
+                <td>{{ programme.nom_equipe1 }} vs {{ programme.nom_equipe2 }}</td>
+                <td>{{ programme.date }}</td>
+                <td>{{ programme.stadium }}</td>
+                <td>{{ programme.prix_a }}</td>
+                <td>{{ programme.prix_b }}</td>
+                <td>
+                    <a href="{% url 'programme_update' programme.id_programme %}" class="btn btn-info btn-sm">Modifier</a>
+                    <button class="btn btn-danger btn-sm" onclick="confirmDelete('{% url 'programme_delete' programme.id_programme %}')">Supprimer</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-center">Aucun programme n'a été créé.</p>
+{% endif %}
+<script>
+    function confirmDelete(url) {
+        if (confirm("Êtes-vous sûr de vouloir supprimer ce programme ?")) {
+            $.post(url, {
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            }, function(response) {
+                if (response.status === 'success') {
+                    alert(response.message);
+                    location.reload();
+                } else {
+                    alert('Erreur: ' + response.message);
+                }
+            }).fail(function() {
+                alert('Une erreur s\'est produite lors de la communication avec le serveur.');
+            });
+        }
+    }
+</script>
+{% endblock %}

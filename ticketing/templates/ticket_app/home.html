@@ -1,0 +1,26 @@
+{% extends "ticket_app/base.html" %}
+
+{% block title %}Programmes Disponibles{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-center">Programmes Disponibles</h1>
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for programme in programmes %}
+    <div class="col">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">{{ programme.nom_equipe1 }} vs {{ programme.nom_equipe2 }}</h5>
+                <p class="card-text"><strong>Stade:</strong> {{ programme.stadium }}</p>
+                <p class="card-text"><strong>Date:</strong> {{ programme.date|date:"d M Y" }}</p>
+                <p class="card-text"><strong>Prix A:</strong> {{ programme.prix_a }} Dt | <strong>Prix B:</strong> {{ programme.prix_b }} Dt</p>
+                <a href="{% url 'reservation_create' programme.id_programme %}" class="btn btn-primary w-100">Réserver des billets</a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center">
+        <p>Aucun programme n'est disponible pour le moment.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

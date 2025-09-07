@@ -1,52 +1,99 @@
-# ticketing/forms.py
-
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
-from .models import Programme, Spectateur
+from .models import CustomUser, Programme, Reservation, Paiement
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 
-# ticketing/forms.py (ajoutez cette classe)
-from .models import Reservation
+# --- Formulaires pour les modèles ---
 
-class ReservationManagerForm(forms.ModelForm):
-    class Meta:
-        model = Reservation
-        fields = ['nombre_billets'] # Par exemple, on permet de changer le nombre de billets
-        # On pourrait ajouter un champ 'statut' si on en avait un dans le modèle
-
-        
-# Formulaire d'inscription personnalisé pour inclure les champs du Spectateur
-class SpectateurCreationForm(UserCreationForm):
-    ville = forms.CharField(max_length=100, required=True)
-    num_phone = forms.CharField(max_length=20, required=True, label="Numéro de téléphone")
-
+class CustomUserCreationForm(UserCreationForm):
+    """
+    Formulaire de création d'utilisateur personnalisé.
+    Inclut les champs de CustomUser et utilise le style Bootstrap.
+    """
     class Meta(UserCreationForm.Meta):
-        model = User
-        fields = UserCreationForm.Meta.fields + ('first_name', 'last_name', 'email',)
-
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        if commit:
-            user.save()
-            Spectateur.objects.create(
-                user=user,
-                ville=self.cleaned_data.get('ville'),
-                num_phone=self.cleaned_data.get('num_phone'),
-            )
-        return user
-
-
-# Formulaire pour la création d'un programme par un gestionnaire
-class ProgrammeForm(forms.ModelForm):
-    class Meta:
-        model = Programme
-        fields = ['nom_equipe1', 'nom_equipe2', 'stadium', 'date', 'division', 'prix_a', 'prix_b']
-        # Utiliser un widget pour faciliter la saisie de la date
+        model = CustomUser
+        fields = (
+            'username', 'first_name', 'last_name', 'email', 
+            'num_phone', 'ville_spect', 'is_spectateur', 'is_agent'
+        )
         widgets = {
-            'date': forms.DateTimeInput(attrs={'type': 'datetime-local'}, format='%Y-%m-%dT%H:%M'),
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'num_phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'ville_spect': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
+class CustomUserChangeForm(UserChangeForm):
+    """
+    Formulaire de modification d'utilisateur pour l'interface d'administration.
+    """
+    class Meta:
+        model = CustomUser
+        fields = (
+            'username', 'first_name', 'last_name', 'email', 
+            'num_phone', 'ville_spect', 'is_spectateur', 'is_agent'
+        )
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'num_phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'ville_spect': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+class ProgrammeForm(forms.ModelForm):
+    """
+    Formulaire pour créer et modifier un programme.
+    """
+    class Meta:
+        model = Programme
+        fields = '__all__'
+        widgets = {
+            'nom_equipe1': forms.TextInput(attrs={'class': 'form-control'}),
+            'nom_equipe2': forms.TextInput(attrs={'class': 'form-control'}),
+            'stadium': forms.TextInput(attrs={'class': 'form-control'}),
+            'date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'version': forms.TextInput(attrs={'class': 'form-control'}),
+            'division': forms.TextInput(attrs={'class': 'form-control'}),
+            'prix_a': forms.NumberInput(attrs={'class': 'form-control'}),
+            'prix_b': forms.NumberInput(attrs={'class': 'form-control'}),
+            # Pour le champ agent, nous utilisons un champ texte pour le datalist
+        }
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Surcharge pour que le champ date utilise le format HTML5
-        self.fields['date'].input_formats = ('%Y-%m-%dT%H:%M',)
+        # Créez une liste de noms d'utilisateurs pour le datalist.
+        # Note : Le datalist est une fonctionnalité front-end qui n'est pas gérée par le widget standard de Django.
+        # Vous devrez créer le <datalist> dans votre template HTML.
+        self.fields['agent'].choices = [(user.pk, user.username) for user in CustomUser.objects.filter(is_agent=True)]
+
+class ReservationForm(forms.ModelForm):
+    """
+    Formulaire pour créer une réservation.
+    """
+    class Meta:
+        model = Reservation
+        fields = '__all__'
+        widgets = {
+            'type_reservation': forms.TextInput(attrs={'class': 'form-control'}),
+            'nombre_billet': forms.NumberInput(attrs={'class': 'form-control'}),
+            # Utilisation de champs texte pour le datalist
+            'spectateur': forms.TextInput(attrs={'class': 'form-control', 'list': 'spectateur_list'}),
+            'programme': forms.TextInput(attrs={'class': 'form-control', 'list': 'programme_list'}),
+        }
+
+class PaiementForm(forms.ModelForm):
+    """
+    Formulaire pour enregistrer un paiement.
+    """
+    class Meta:
+        model = Paiement
+        fields = '__all__'
+        widgets = {
+            'mode_paiement': forms.TextInput(attrs={'class': 'form-control'}),
+            'montant': forms.NumberInput(attrs={'class': 'form-control'}),
+            'reservation': forms.TextInput(attrs={'class': 'form-control', 'list': 'reservation_list'}),
+        }

@@ -1,0 +1,25 @@
+{% extends "ticket_app/base.html" %}
+
+{% block title %}Mon Historique de Réservations{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-center">Mon Historique de Réservations</h1>
+{% if reservations %}
+<div class="row g-4">
+    {% for reservation in reservations %}
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Réservation pour {{ reservation.programme.nom_equipe1 }} vs {{ reservation.programme.nom_equipe2 }}</h5>
+                <p class="card-text"><strong>Date de la réservation:</strong> {{ reservation.date_reservation|date:"d M Y" }}</p>
+                <p class="card-text"><strong>Nombre de billets:</strong> {{ reservation.nombre_billet }}</p>
+                <p class="card-text"><strong>Type de réservation:</strong> {{ reservation.type_reservation }}</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="text-center">Vous n'avez pas encore effectué de réservations.</p>
+{% endif %}
+{% endblock %}

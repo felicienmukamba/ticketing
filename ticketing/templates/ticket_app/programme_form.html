@@ -1,0 +1,84 @@
+{% extends "ticket_app/base.html" %}
+
+{% block title %}
+    {% if form.instance.pk %}Modifier un programme{% else %}Créer un programme{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-body">
+                <h1 class="card-title text-center mb-4">
+                    {% if form.instance.pk %}Modifier un programme{% else %}Créer un programme{% endif %}
+                </h1>
+                <form id="programme-form" method="post" action="">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="{{ form.nom_equipe1.id_for_label }}" class="form-label">Nom Équipe 1:</label>
+                        {{ form.nom_equipe1 }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.nom_equipe2.id_for_label }}" class="form-label">Nom Équipe 2:</label>
+                        {{ form.nom_equipe2 }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.stadium.id_for_label }}" class="form-label">Stade:</label>
+                        {{ form.stadium }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.date.id_for_label }}" class="form-label">Date:</label>
+                        {{ form.date }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.version.id_for_label }}" class="form-label">Version:</label>
+                        {{ form.version }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.division.id_for_label }}" class="form-label">Division:</label>
+                        {{ form.division }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.prix_a.id_for_label }}" class="form-label">Prix A:</label>
+                        {{ form.prix_a }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.prix_b.id_for_label }}" class="form-label">Prix B:</label>
+                        {{ form.prix_b }}
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        {% if form.instance.pk %}Modifier{% else %}Créer{% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $('#programme-form').on('submit', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        $.ajax({
+            type: form.attr('method'),
+            url: form.attr('action'),
+            data: form.serialize(),
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    alert(response.message);
+                    window.location.href = '{% url "programme_list" %}';
+                } else {
+                    var errors = '';
+                    for (var key in response.errors) {
+                        errors += key + ': ' + response.errors[key] + '\n';
+                    }
+                    alert('Erreur de formulaire:\n' + errors);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Une erreur s\'est produite lors de la soumission du formulaire.');
+            }
+        });
+    });
+</script>
+{% endblock %}
